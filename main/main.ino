@@ -9,9 +9,9 @@
 #define Z_PIN A3
 
 #define GAS_THRESHOLD 500
-#define MOVEMENT_THRESHOLD 100
-#define SMS_COOLDOWN 60000
-#define BUZZER_DURATION 60000
+#define MOVEMENT_THRESHOLD 200
+#define SMS_COOLDOWN 3000
+#define BUZZER_DURATION 3000
 
 SoftwareSerial sim800l(SIM800_TX_PIN, SIM800_RX_PIN);
 
@@ -19,6 +19,7 @@ unsigned long lastSmsTime = 0;
 unsigned long buzzerStartTime = 0;
 bool buzzerActive = false;
 bool simInitialized = false;
+bool alertTriggered = false;
 
 const int BASELINE_X = 512;
 const int BASELINE_Y = 512;
@@ -53,7 +54,16 @@ void loop() {
   int y = analogRead(Y_PIN);
   int z = analogRead(Z_PIN);
 
-  if (gasLevel > GAS_THRESHOLD || detectMovement(x, y, z)) {
+  Serial.print("x: ");
+  Serial.println(x);
+  Serial.print("y: ");
+  Serial.println(y);
+  Serial.print("z: ");
+  Serial.println(z);
+  Serial.print("gasLevel: ");
+  Serial.println(gasLevel);
+
+  if ((gasLevel > GAS_THRESHOLD || detectMovement(x, y, z)) && !alertTriggered) {
     Serial.println("Triggering Alert...");
     triggerAlert();
   }
@@ -61,6 +71,7 @@ void loop() {
   if (buzzerActive && millis() - buzzerStartTime >= BUZZER_DURATION) {
     digitalWrite(BUZZER_PIN, LOW);
     buzzerActive = false;
+    alertTriggered = false;
     Serial.println("Buzzer Deactivated.");
   }
 
@@ -72,10 +83,12 @@ void loop() {
 }
 
 bool detectMovement(int x, int y, int z) {
-  return (abs(x - BASELINE_X) > MOVEMENT_THRESHOLD || abs(y - BASELINE_Y) > MOVEMENT_THRESHOLD || abs(z - BASELINE_Z) > MOVEMENT_THRESHOLD);
+  // abs(x - BASELINE_X) > MOVEMENT_THRESHOLD ||
+  return (abs(y - BASELINE_Y) > MOVEMENT_THRESHOLD || abs(z - BASELINE_Z) > MOVEMENT_THRESHOLD);
 }
 
 void triggerAlert() {
+  alertTriggered = true;
   if (!buzzerActive) {
     digitalWrite(BUZZER_PIN, HIGH);
     buzzerActive = true;
@@ -84,7 +97,7 @@ void triggerAlert() {
   }
 
   if (millis() - lastSmsTime >= SMS_COOLDOWN) {
-    sendSMS("+639208771890", "Alert! Gas or Movement detected!");
+    sendSMS("+639388860802", "Alert! Gas or Movement detected!");
     lastSmsTime = millis();
   }
 }
@@ -102,7 +115,7 @@ void sendSMS(String number, String text) {
 bool initializeSIM800() {
   sendAT("AT");
   sendAT("AT+CMGF=1");
-  sendAT("AT+CSCS=\"GSM\"");
+  // sendAT("AT+CSCS=\"GSM\"");
   return true;
 }
 
